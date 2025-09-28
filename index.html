@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AppChat</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
+<style>
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #e5ddd5;
+}
+#header {
+    height: 60px;
+    background: linear-gradient(90deg, #128c7e, #075e54);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.8em;
+    letter-spacing: 1px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    z-index: 100;
+}
+#messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scroll-behavior: smooth;
+}
+.message {
+    max-width: 75%;
+    padding: 8px 12px;
+    border-radius: 15px;
+    word-wrap: break-word;
+    position: relative;
+    overflow: visible;
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.2s ease;
+}
+.message.show {
+    transform: scaleY(1);
+}
+.message.you {
+    align-self: flex-end;
+    background: #dcf8c6;
+}
+.message.other {
+    align-self: flex-start;
+    background: #fff;
+}
+.message-info {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 0.65em;
+    color: #555;
+    margin-top: 4px;
+    gap: 4px;
+}
+.message-info img {
+    width: 16px;
+    height: 12px;
+    border-radius: 2px;
+}
+.message-info span {
+    display: inline-block;
+    white-space: nowrap;
+}
+.message.other .message-info.hover-flag img {
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+}
+.message.other .message-info.hover-flag span {
+    display: none; /* hide text entirely for old messages of the same language */
+}
+.timestamp {
+    font-size: 0.55em;
+    color: #888;
+    text-align: right;
+    margin-top: 2px;
+}
+#inputArea {
+    display: flex;
+    padding: 10px;
+    background: #f0f0f0;
+}
+#messageInput {
+    flex: 1;
+    padding: 8px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+}
+#sendBtn {
+    margin-left: 8px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    background: #128c7e;
+    color: white;
+    cursor: pointer;
+}
+#langSelector {
+    margin-left: 8px;
+    padding: 5px;
+    border-radius: 5px;
+}
+</style>
+</head>
+<body>
+<div id="header">AppChat</div>
+<div id="messages"></div>
+<div id="inputArea">
+    <input id="messageInput" type="text" placeholder="Type a message...">
+    <button id="sendBtn">Send</button>
+    <select id="langSelector">
+        <option>English</option>
+        <option>Spanish</option>
+        <option>French</option>
+        <option>German</option>
+        <option>Japanese</option>
+        <option>Korean</option>
+    </select>
+</div>
+
+<script>
+window.onload = () => {
+    const messagesDiv = document.getElementById("messages");
+    const input = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const langSelector = document.getElementById("langSelector");
+
+    const flagMap = {
+        "English": "https://flagcdn.com/gb.svg",
+        "Spanish": "https://flagcdn.com/es.svg",
+        "French": "https://flagcdn.com/fr.svg",
+        "German": "https://flagcdn.com/de.svg",
+        "Japanese": "https://flagcdn.com/jp.svg",
+        "Korean": "https://flagcdn.com/kr.svg",
+    };
+
+    let ws;
+    let messageHistory = [];
+
+    function connectWebSocket(lang) {
+        if (ws) ws.close();
+        ws = new WebSocket(`ws://127.0.0.1:8000/ws/${lang}`);
+
+        ws.onmessage = (event) => {
+            const text = event.data;
+            const regex = /^(.+?) → .+?: (.+)$/;
+            const match = text.match(regex);
+            if (match) {
+                const sourceLang = match[1];
+                const messageText = match[2];
+                addMessage(messageText, "other", sourceLang);
+            } else {
+                addMessage(text, "other");
+            }
+        };
+    }
+
+    connectWebSocket(langSelector.value);
+
+    langSelector.addEventListener("change", () => {
+        const lang = langSelector.value;
+        connectWebSocket(lang);
+        renderMessages();
+    });
+
+    function sendMessage() {
+        if (input.value.trim() !== "" && ws.readyState === WebSocket.OPEN) {
+            ws.send(input.value);
+            addMessage(input.value, "you");
+            input.value = "";
+        }
+    }
+
+    sendBtn.onclick = sendMessage;
+    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+
+    function addMessage(text, type, sourceLang = null) {
+        messageHistory.push({ text, type, sourceLang, translatedText: null, timestamp: new Date() });
+        renderMessages();
+    }
+
+    async function renderMessages() {
+        messagesDiv.innerHTML = "";
+        const currentLang = langSelector.value;
+        let lastTimestamp = null;
+
+        // Determine last message per language
+        const lastMessagePerLang = {};
+        messageHistory.forEach((msg, idx) => {
+            if (msg.type === "other" && msg.sourceLang) {
+                lastMessagePerLang[msg.sourceLang] = idx;
+            }
+        });
+
+        for (let i = 0; i < messageHistory.length; i++) {
+            const msgObj = messageHistory[i];
+
+            // Skip system messages
+            if (msgObj.type === "system") continue;
+
+            let displayText = msgObj.translatedText || msgObj.text;
+
+            // Translate message text if not from user
+            if (msgObj.type === "other" && msgObj.sourceLang) {
+                const res = await fetch(`/translate?text=${encodeURIComponent(msgObj.text)}&dest=${currentLang}&src=${msgObj.sourceLang}`);
+                const data = await res.json();
+                displayText = data.translated_text;
+                msgObj.translatedText = displayText;
+            }
+
+            const msg = document.createElement("div");
+            msg.className = `message ${msgObj.type}`;
+            msg.innerText = displayText;
+
+            const info = document.createElement("div");
+            info.className = "message-info";
+
+            if (msgObj.type === "other" && msgObj.sourceLang) {
+                const flag = document.createElement("img");
+                flag.src = flagMap[msgObj.sourceLang] || "";
+                flag.alt = msgObj.sourceLang;
+
+                // Only show the original language text for the most recent message in this language
+                if (i === lastMessagePerLang[msgObj.sourceLang]) {
+                    const langText = document.createElement("span");
+
+                    // Translate the "Original Language: [language]" text itself
+                    const originalText = `(Original Language: ${msgObj.sourceLang})`;
+                    const langRes = await fetch(`/translate?text=${encodeURIComponent(originalText)}&dest=${currentLang}&src=${msgObj.sourceLang}`);
+                    const langData = await langRes.json();
+                    langText.innerText = langData.translated_text;
+
+                    info.appendChild(langText);
+                } else {
+                    info.classList.add("hover-flag"); // faded flag only
+                }
+
+                info.appendChild(flag);
+            }
+
+            msg.appendChild(info);
+            messagesDiv.appendChild(msg);
+
+            // Smooth bubble animation
+            setTimeout(() => { msg.classList.add("show"); }, 10);
+
+            // Timestamp logic
+            let showTimestamp = false;
+            if (!lastTimestamp || (msgObj.timestamp - lastTimestamp) / 60000 > 10) {
+                showTimestamp = true;
+            } else if (i === messageHistory.length - 1) {
+                showTimestamp = true;
+            }
+
+            if (showTimestamp) {
+                const ts = document.createElement("div");
+                ts.className = "timestamp";
+                ts.innerText = msgObj.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                msg.appendChild(ts);
+                lastTimestamp = msgObj.timestamp;
+            }
+        }
+
+        messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
+    }
+};
+</script>
+</body>
+</html>
