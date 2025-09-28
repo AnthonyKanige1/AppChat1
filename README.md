@@ -1,40 +1,32 @@
-🌍 AppChat
+AppChat
 
-AppChat is a real-time multilingual chat application built with FastAPI (backend) and HTML/CSS/JavaScript (frontend).
+AppChat is a real-time multilingual chat application built with FastAPI on the backend and HTML, CSS, and JavaScript on the frontend. It automatically translates messages into the system language chosen by each user, shows country flags alongside messages, and organizes the chat with timestamps and smooth animations.
 
-It automatically translates messages into the system language chosen by each user, displays country flags, and organizes chat messages with timestamps and smooth animations.
-
-✅ Requirements
+Requirements
 
 Python 3.9+
 
-Dependencies (install with pip):
+Install dependencies with pip:
 
 pip install fastapi uvicorn[standard] deep-translator
 
 
-A compatible browser: Chrome, Firefox, Edge, Safari
+A modern browser such as Chrome, Firefox, Edge, or Safari
 
-📂 Project Structure
-│── server.py       # FastAPI backend
-│── index.html      # Frontend (chat UI)
-│── README.md       # Project documentation
-│── .venv/          # (optional) Virtual environment
+Instructions
 
-🚀 Setup Instructions
-
-Clone the repository (or initialize git if starting fresh):
+Clone the repository (or start fresh with Git):
 
 git clone https://github.com/yourusername/AppChat.git
 cd AppChat
 
 
-Create a virtual environment (recommended):
+Create and activate a virtual environment (recommended):
 
 python -m venv .venv
-# On Mac/Linux
+# Mac/Linux
 source .venv/bin/activate
-# On Windows
+# Windows
 .venv\Scripts\activate
 
 
@@ -48,25 +40,26 @@ Run the server:
 uvicorn server:app --reload
 
 
-Open the frontend:
-In your browser, go to 👉 http://127.0.0.1:8000
+Open the app in your browser:
+Go to http://127.0.0.1:8000
+.
 
-💬 How to Use AppChat
+How to Use APPCHAT:
 
-Type messages into the input field and press Enter or click Send.
+1.Type a message in the input box and press Enter or click Send.
 
-Select your preferred system language from the dropdown.
+2.Select your preferred system language from the dropdown.
 
-Messages from others will appear translated automatically.
+3.Messages from others are automatically translated into your chosen language.
 
-If you change your language, past messages will be retranslated.
+4.If you change your system language, all previous messages (including the “(Original Language: …)” tag) are retranslated instantly.
 
-Flags and (Original Language: …) will only display for the most recent message in a given language.
+5.Only the most recent message in a given language will display the flag and original language note; older messages keep only the translation for a clean chat view.
 
-🛠️ Technologies Used
+Technologies Used:
 
 Backend: FastAPI, Uvicorn
 
-Frontend: HTML, CSS, Vanilla JavaScript
+Frontend: HTML, CSS, JavaScript
 
 Translation: deep-translator (Google Translate API wrapper)
