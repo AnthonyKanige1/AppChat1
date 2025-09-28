@@ -42,7 +42,7 @@ uvicorn server:app --reload
 
 Open the app in your browser:
 Go to http://127.0.0.1:8000
-.
+(Open two tabs with that link to test functionality of translator, i.e. texting yourself basically)
 
 How to Use APPCHAT:
 
